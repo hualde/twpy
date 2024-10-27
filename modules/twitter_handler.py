@@ -1,6 +1,7 @@
 import os
 import tweepy
 import io
+from PIL import Image
 
 class TwitterHandler:
     def __init__(self):
@@ -15,14 +16,20 @@ class TwitterHandler:
 
     def tweet_with_image(self, status_text, image):
         try:
+            # Ensure image is a PIL Image object
+            if not isinstance(image, Image.Image):
+                image = Image.open(image)
+
             # Convert PIL Image to bytes
             img_byte_arr = io.BytesIO()
             image.save(img_byte_arr, format='JPEG')
-            img_byte_arr = img_byte_arr.getvalue()
+            img_byte_arr.seek(0)
 
+            # Upload the image
             media = self.api.media_upload(filename="image.jpg", file=img_byte_arr)
             media_id = media.media_id
 
+            # Create tweet with uploaded image
             client = tweepy.Client(
                 consumer_key=self.consumer_key,
                 consumer_secret=self.consumer_secret,
