@@ -48,6 +48,10 @@ def get_first_pending_item(spreadsheet_id):
                                     range=SAMPLE_RANGE_NAME).execute()
         values = result.get('values', [])
 
+        print(f"Values from spreadsheet {spreadsheet_id}:")
+        for row in values:
+            print(row)
+
         if not values:
             print('No data found.')
             return None
@@ -60,6 +64,7 @@ def get_first_pending_item(spreadsheet_id):
                         'row_index': index + 2  # +2 because we start from A2 and sheets are 1-indexed
                     }
 
+        print('No pending items found.')
         return None
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -191,7 +196,9 @@ def tweet():
 
 @app.route('/instagram')
 def instagram():
+    print("Accessing Instagram route")
     pending_item = get_first_pending_item(INSTAGRAM_SPREADSHEET_ID)
+    print(f"Pending item: {pending_item}")
     image_data = {}
     if pending_item:
         image_file = get_image_from_drive(pending_item['column_a'])
@@ -199,6 +206,10 @@ def instagram():
             effects = apply_effects(image_file)
             for effect, img in effects.items():
                 image_data[effect] = image_to_base64(img)
+        else:
+            print(f"Image file not found for: {pending_item['column_a']}")
+    else:
+        print("No pending item found for Instagram")
 
     return render_template('instagram.html', pending_item=pending_item, image_data=image_data)
 
