@@ -8,14 +8,15 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from PIL import Image, ImageOps, ImageFilter, ImageEnhance
+import json
 
 app = Flask(__name__)
 
 # Twitter API credentials
-consumer_key = '5WxoPsKfFs3X7HSmGlMokusMt'
-consumer_secret = 'nkFUGpTghUJTEChF2iUFrMG616HOn1Bj7JB4a7cL4wUZaGpl8D'
-access_token = '1845487569469149184-92UlJEYty4Sgs6jDZeB34JvhnFU1Og'
-access_token_secret = 'tUvk4yXa11PAROJ2YgR57Cx2EjMSxFmEO7Ge64e37Om5R'
+consumer_key = os.environ.get('CONSUMER_KEY')
+consumer_secret = os.environ.get('CONSUMER_SECRET')
+access_token = os.environ.get('ACCESS_TOKEN')
+access_token_secret = os.environ.get('ACCESS_TOKEN_SECRET')
 
 # Autenticación de Twitter
 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
@@ -27,10 +28,11 @@ api = tweepy.API(auth)
 # Google API setup
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets',
           'https://www.googleapis.com/auth/drive.readonly']
-SERVICE_ACCOUNT_FILE = 'service_account.json'
 
-creds = service_account.Credentials.from_service_account_file(
-    SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+# Use the environment variable for the service account info
+service_account_info = json.loads(os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'))
+creds = service_account.Credentials.from_service_account_info(
+    service_account_info, scopes=SCOPES)
 
 # The ID of the spreadsheet and Google Drive folder
 SAMPLE_SPREADSHEET_ID = '1K7r5ieDBpvBeqs-qa6hG_pTCiqUDbwIW6e9rU8zwa30'
@@ -201,4 +203,5 @@ scheduler.add_job(func=scheduled_tweet, trigger="interval", hours=24)
 scheduler.start()
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
