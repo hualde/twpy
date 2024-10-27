@@ -8,6 +8,7 @@ from werkzeug.utils import secure_filename
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
+from PIL import Image, ImageOps, ImageFilter, ImageEnhance
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -103,6 +104,24 @@ def get_image_from_drive(file_name):
         print(f"An error occurred while fetching the image: {e}")
         return None
 
+def apply_effects(image):
+    original = Image.open(image)
+    greyscale = ImageOps.grayscale(original)
+    blur = original.filter(ImageFilter.GaussianBlur(radius=5))
+    contrast = ImageEnhance.Contrast(original).enhance(1.5)
+
+    return {
+        'original': original,
+        'greyscale': greyscale,
+        'blur': blur,
+        'contrast': contrast
+    }
+
+def image_to_base64(image):
+    buffered = io.BytesIO()
+    image.save(buffered, format="JPEG")
+    return base64.b64encode(buffered.getvalue()).decode('utf-8')
+
 def tweet_with_image(status_text, image_file):
     try:
         # Upload image
@@ -122,11 +141,13 @@ def tweet_with_image(status_text, image_file):
 @app.route('/')
 def home():
     pending_item = get_first_pending_item()
-    image_data = None
+    image_data = {}
     if pending_item:
         image_file = get_image_from_drive(pending_item['column_a'])
         if image_file:
-            image_data = base64.b64encode(image_file.getvalue()).decode('utf-8')
+            effects = apply_effects(image_file)
+            for effect, img in effects.items():
+                image_data[effect] = image_to_base64(img)
     return render_template('index.html', pending_item=pending_item, image_data=image_data)
 
 @app.route('/tweet', methods=['POST'])
@@ -139,8 +160,16 @@ def tweet():
     if not image_file:
         return jsonify({'result': f"Image not found: {pending_item['column_a']}"}), 400
 
+    effect = request.form.get('effect', 'original')
+    effects = apply_effects(image_file)
+    selected_image = effects[effect]
+
+    buffered = io.BytesIO()
+    selected_image.save(buffered, format="JPEG")
+    buffered.seek(0)
+
     status_text = pending_item['column_b']
-    result = tweet_with_image(status_text, image_file)
+    result = tweet_with_image(status_text, buffered)
     return jsonify({'result': result})
 
 def scheduled_tweet():
