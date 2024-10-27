@@ -57,7 +57,8 @@ def get_first_pending_item(spreadsheet_id):
             return None
         else:
             for index, row in enumerate(values):
-                if len(row) >= 3 and row[2].lower() == 'pendiente':
+                # Check if the row has at least 2 columns and the last column (status) is empty or 'pendiente'
+                if len(row) >= 2 and (len(row) == 2 or row[2].lower() == 'pendiente' or row[2].strip() == ''):
                     return {
                         'column_a': row[0],
                         'column_b': row[1],
@@ -196,9 +197,7 @@ def tweet():
 
 @app.route('/instagram')
 def instagram():
-    print("Accessing Instagram route")
     pending_item = get_first_pending_item(INSTAGRAM_SPREADSHEET_ID)
-    print(f"Pending item: {pending_item}")
     image_data = {}
     if pending_item:
         image_file = get_image_from_drive(pending_item['column_a'])
@@ -206,10 +205,6 @@ def instagram():
             effects = apply_effects(image_file)
             for effect, img in effects.items():
                 image_data[effect] = image_to_base64(img)
-        else:
-            print(f"Image file not found for: {pending_item['column_a']}")
-    else:
-        print("No pending item found for Instagram")
 
     return render_template('instagram.html', pending_item=pending_item, image_data=image_data)
 
