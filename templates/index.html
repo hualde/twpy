@@ -50,23 +50,25 @@
             border-radius: 4px;
         }
         .image-options {
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 10px;
             margin-top: 20px;
         }
         .image-option {
-            flex: 1 1 calc(50% - 10px);
-            max-width: calc(50% - 10px);
             text-align: center;
+            cursor: pointer;
+            padding: 10px;
+            border: 2px solid transparent;
+            border-radius: 4px;
         }
         .image-option img {
             max-width: 100%;
             height: auto;
-            border-radius: 4px;
         }
         .image-option.selected {
-            border: 2px solid #1da1f2;
+            border-color: #1da1f2;
+            background-color: #e8f5fe;
         }
     </style>
 </head>
@@ -75,9 +77,9 @@
         <h1>Twitter Bot Dashboard</h1>
         <div id="result"></div>
 
-        <h2>Pending Item</h2>
         {% if pending_item %}
             <div class="pending-item">
+                <h2>Pending Tweet</h2>
                 <p><strong>Tweet Text:</strong> {{ pending_item.column_b }}</p>
                 <div class="image-options">
                     {% for effect, img_data in image_data.items() %}
@@ -87,7 +89,7 @@
                         </div>
                     {% endfor %}
                 </div>
-                <button id="tweetButton">Send Tweet</button>
+                <button id="pendingTweetButton">Send Pending Tweet</button>
             </div>
         {% else %}
             <p>No pending items found.</p>
@@ -105,9 +107,7 @@
             });
         });
 
-        document.getElementById('tweetButton').addEventListener('click', function(e) {
-            e.preventDefault();
-            
+        function sendTweet() {
             const formData = new FormData();
             formData.append('effect', selectedEffect);
 
@@ -128,6 +128,11 @@
                 console.error('Error:', error);
                 document.getElementById('result').textContent = error.result || 'An error occurred while sending the tweet.';
             });
+        }
+
+        document.getElementById('pendingTweetButton').addEventListener('click', function(e) {
+            e.preventDefault();
+            sendTweet();
         });
     </script>
 </body>

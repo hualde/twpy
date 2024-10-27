@@ -4,42 +4,31 @@ import base64
 from flask import Flask, render_template, request, jsonify
 import tweepy
 from apscheduler.schedulers.background import BackgroundScheduler
-from werkzeug.utils import secure_filename
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from PIL import Image, ImageOps, ImageFilter, ImageEnhance
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
-
-# Asegúrate de que el directorio de uploads exista
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Twitter API credentials
-consumer_key = os.environ['CONSUMER_KEY']
-consumer_secret = os.environ['CONSUMER_SECRET']
-access_token = os.environ['ACCESS_TOKEN']
-access_token_secret = os.environ['ACCESS_TOKEN_SECRET']
+consumer_key = '5WxoPsKfFs3X7HSmGlMokusMt'
+consumer_secret = 'nkFUGpTghUJTEChF2iUFrMG616HOn1Bj7JB4a7cL4wUZaGpl8D'
+access_token = '1845487569469149184-92UlJEYty4Sgs6jDZeB34JvhnFU1Og'
+access_token_secret = 'tUvk4yXa11PAROJ2YgR57Cx2EjMSxFmEO7Ge64e37Om5R'
 
-# Authenticate with Twitter
+# Autenticación de Twitter
 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_token_secret)
+
+# API de Twitter
 api = tweepy.API(auth)
-client = tweepy.Client(
-    consumer_key=consumer_key,
-    consumer_secret=consumer_secret,
-    access_token=access_token,
-    access_token_secret=access_token_secret
-)
 
 # Google API setup
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly',
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets',
           'https://www.googleapis.com/auth/drive.readonly']
 SERVICE_ACCOUNT_FILE = 'service_account.json'
 
-creds = None
 creds = service_account.Credentials.from_service_account_file(
     SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 
@@ -51,8 +40,6 @@ DRIVE_FOLDER_ID = '1eBTlJykWWl8oQ8mM5mw0IzKIyjtBJm8H'
 def get_first_pending_item():
     try:
         service = build('sheets', 'v4', credentials=creds)
-
-        # Call the Sheets API
         sheet = service.spreadsheets()
         result = sheet.values().get(spreadsheetId=SAMPLE_SPREADSHEET_ID,
                                     range=SAMPLE_RANGE_NAME).execute()
@@ -62,11 +49,12 @@ def get_first_pending_item():
             print('No data found.')
             return None
         else:
-            for row in values:
+            for index, row in enumerate(values):
                 if len(row) >= 3 and row[2].lower() == 'pendiente':
                     return {
                         'column_a': row[0],
-                        'column_b': row[1]
+                        'column_b': row[1],
+                        'row_index': index + 2  # +2 because we start from A2 and sheets are 1-indexed
                     }
 
         return None
@@ -74,11 +62,26 @@ def get_first_pending_item():
         print(f"An error occurred: {e}")
         return None
 
+def update_sheet_status(row_index):
+    try:
+        service = build('sheets', 'v4', credentials=creds)
+        sheet = service.spreadsheets()
+        range_name = f'X!C{row_index}'
+        body = {
+            'values': [['enviado']]
+        }
+        result = sheet.values().update(
+            spreadsheetId=SAMPLE_SPREADSHEET_ID, range=range_name,
+            valueInputOption='RAW', body=body).execute()
+        print(f"{result.get('updatedCells')} cells updated.")
+        return True
+    except Exception as e:
+        print(f"An error occurred while updating the sheet: {e}")
+        return False
+
 def get_image_from_drive(file_name):
     try:
         service = build('drive', 'v3', credentials=creds)
-
-        # Search for the file in the specified folder
         query = f"name = '{file_name}' and '{DRIVE_FOLDER_ID}' in parents"
         results = service.files().list(q=query, fields="files(id, name)").execute()
         items = results.get('files', [])
@@ -88,8 +91,6 @@ def get_image_from_drive(file_name):
             return None
 
         file_id = items[0]['id']
-
-        # Download the file
         request = service.files().get_media(fileId=file_id)
         file = io.BytesIO()
         downloader = MediaIoBaseDownload(file, request)
@@ -124,17 +125,22 @@ def image_to_base64(image):
 
 def tweet_with_image(status_text, image_file):
     try:
-        # Upload image
         media = api.media_upload(filename="image.jpg", file=image_file)
         media_id = media.media_id
 
-        # Create tweet
+        client = tweepy.Client(
+            consumer_key=consumer_key,
+            consumer_secret=consumer_secret,
+            access_token=access_token,
+            access_token_secret=access_token_secret
+        )
+
         response = client.create_tweet(text=status_text, media_ids=[media_id])
 
         if response:
-            return "Tweet published successfully."
+            return "Tweet publicado con éxito."
         else:
-            return "Error publishing tweet."
+            return "Error al publicar el tweet."
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -148,6 +154,7 @@ def home():
             effects = apply_effects(image_file)
             for effect, img in effects.items():
                 image_data[effect] = image_to_base64(img)
+
     return render_template('index.html', pending_item=pending_item, image_data=image_data)
 
 @app.route('/tweet', methods=['POST'])
@@ -170,6 +177,13 @@ def tweet():
 
     status_text = pending_item['column_b']
     result = tweet_with_image(status_text, buffered)
+
+    if "éxito" in result:
+        if update_sheet_status(pending_item['row_index']):
+            result += " La hoja de cálculo ha sido actualizada."
+        else:
+            result += " Pero hubo un error al actualizar la hoja de cálculo."
+
     return jsonify({'result': result})
 
 def scheduled_tweet():
@@ -177,7 +191,9 @@ def scheduled_tweet():
     if pending_item:
         image_file = get_image_from_drive(pending_item['column_a'])
         if image_file:
-            tweet_with_image(pending_item['column_b'], image_file)
+            result = tweet_with_image(pending_item['column_b'], image_file)
+            if "éxito" in result:
+                update_sheet_status(pending_item['row_index'])
 
 # Set up scheduler
 scheduler = BackgroundScheduler()
