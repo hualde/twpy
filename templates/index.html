@@ -20,7 +20,7 @@
             border-radius: 5px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
-        h1 {
+        h1, h2 {
             color: #333;
         }
         form {
@@ -56,6 +56,13 @@
             border: 1px solid #1da1f2;
             border-radius: 4px;
         }
+        .pending-item {
+            margin-top: 20px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -71,6 +78,16 @@
             <button type="submit">Send Tweet</button>
         </form>
         <div id="result"></div>
+
+        <h2>Pending Item</h2>
+        {% if pending_item %}
+            <div class="pending-item">
+                <p><strong>Column A:</strong> {{ pending_item.column_a }}</p>
+                <p><strong>Column B:</strong> {{ pending_item.column_b }}</p>
+            </div>
+        {% else %}
+            <p>No pending items found.</p>
+        {% endif %}
     </div>
 
     <script>

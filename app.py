@@ -3,6 +3,8 @@ from flask import Flask, render_template, request, jsonify
 import tweepy
 from apscheduler.schedulers.background import BackgroundScheduler
 from werkzeug.utils import secure_filename
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -28,6 +30,44 @@ client = tweepy.Client(
     access_token_secret=access_token_secret
 )
 
+# Google Sheets setup
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+SERVICE_ACCOUNT_FILE = 'service_account.json'
+
+creds = None
+creds = service_account.Credentials.from_service_account_file(
+    SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+
+# The ID and range of a sample spreadsheet.
+SAMPLE_SPREADSHEET_ID = '1K7r5ieDBpvBeqs-qa6hG_pTCiqUDbwIW6e9rU8zwa30'
+SAMPLE_RANGE_NAME = 'X!A2:C'
+
+def get_first_pending_item():
+    try:
+        service = build('sheets', 'v4', credentials=creds)
+
+        # Call the Sheets API
+        sheet = service.spreadsheets()
+        result = sheet.values().get(spreadsheetId=SAMPLE_SPREADSHEET_ID,
+                                    range=SAMPLE_RANGE_NAME).execute()
+        values = result.get('values', [])
+
+        if not values:
+            print('No data found.')
+            return None
+        else:
+            for row in values:
+                if len(row) >= 3 and row[2].lower() == 'pendiente':
+                    return {
+                        'column_a': row[0],
+                        'column_b': row[1]
+                    }
+
+        return None
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+
 def tweet_with_image(status_text, image_file):
     try:
         # Upload image
@@ -46,7 +86,8 @@ def tweet_with_image(status_text, image_file):
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    pending_item = get_first_pending_item()
+    return render_template('index.html', pending_item=pending_item)
 
 @app.route('/tweet', methods=['POST'])
 def tweet():
