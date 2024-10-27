@@ -1,10 +1,13 @@
 import os
+import io
+import base64
 from flask import Flask, render_template, request, jsonify
 import tweepy
 from apscheduler.schedulers.background import BackgroundScheduler
 from werkzeug.utils import secure_filename
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -30,17 +33,19 @@ client = tweepy.Client(
     access_token_secret=access_token_secret
 )
 
-# Google Sheets setup
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+# Google API setup
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly',
+          'https://www.googleapis.com/auth/drive.readonly']
 SERVICE_ACCOUNT_FILE = 'service_account.json'
 
 creds = None
 creds = service_account.Credentials.from_service_account_file(
     SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 
-# The ID and range of a sample spreadsheet.
+# The ID of the spreadsheet and Google Drive folder
 SAMPLE_SPREADSHEET_ID = '1K7r5ieDBpvBeqs-qa6hG_pTCiqUDbwIW6e9rU8zwa30'
 SAMPLE_RANGE_NAME = 'X!A2:C'
+DRIVE_FOLDER_ID = '1eBTlJykWWl8oQ8mM5mw0IzKIyjtBJm8H'
 
 def get_first_pending_item():
     try:
@@ -68,10 +73,40 @@ def get_first_pending_item():
         print(f"An error occurred: {e}")
         return None
 
+def get_image_from_drive(file_name):
+    try:
+        service = build('drive', 'v3', credentials=creds)
+
+        # Search for the file in the specified folder
+        query = f"name = '{file_name}' and '{DRIVE_FOLDER_ID}' in parents"
+        results = service.files().list(q=query, fields="files(id, name)").execute()
+        items = results.get('files', [])
+
+        if not items:
+            print(f'No file found with name: {file_name}')
+            return None
+
+        file_id = items[0]['id']
+
+        # Download the file
+        request = service.files().get_media(fileId=file_id)
+        file = io.BytesIO()
+        downloader = MediaIoBaseDownload(file, request)
+        done = False
+        while done is False:
+            status, done = downloader.next_chunk()
+
+        file.seek(0)
+        return file
+
+    except Exception as e:
+        print(f"An error occurred while fetching the image: {e}")
+        return None
+
 def tweet_with_image(status_text, image_file):
     try:
         # Upload image
-        media = api.media_upload(filename=image_file)
+        media = api.media_upload(filename="image.jpg", file=image_file)
         media_id = media.media_id
 
         # Create tweet
@@ -87,26 +122,33 @@ def tweet_with_image(status_text, image_file):
 @app.route('/')
 def home():
     pending_item = get_first_pending_item()
-    return render_template('index.html', pending_item=pending_item)
+    image_data = None
+    if pending_item:
+        image_file = get_image_from_drive(pending_item['column_a'])
+        if image_file:
+            image_data = base64.b64encode(image_file.getvalue()).decode('utf-8')
+    return render_template('index.html', pending_item=pending_item, image_data=image_data)
 
 @app.route('/tweet', methods=['POST'])
 def tweet():
-    status_text = request.form['status']
-    if 'image' not in request.files:
-        return jsonify({'result': 'No file part'}), 400
-    file = request.files['image']
-    if file.filename == '':
-        return jsonify({'result': 'No selected file'}), 400
-    if file:
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
-        result = tweet_with_image(status_text, filepath)
-        os.remove(filepath)  # Eliminar el archivo después de usarlo
-        return jsonify({'result': result})
+    pending_item = get_first_pending_item()
+    if not pending_item:
+        return jsonify({'result': 'No pending items to tweet'}), 400
+
+    image_file = get_image_from_drive(pending_item['column_a'])
+    if not image_file:
+        return jsonify({'result': f"Image not found: {pending_item['column_a']}"}), 400
+
+    status_text = pending_item['column_b']
+    result = tweet_with_image(status_text, image_file)
+    return jsonify({'result': result})
 
 def scheduled_tweet():
-    tweet_with_image("Scheduled tweet!", "path_to_image.jpg")
+    pending_item = get_first_pending_item()
+    if pending_item:
+        image_file = get_image_from_drive(pending_item['column_a'])
+        if image_file:
+            tweet_with_image(pending_item['column_b'], image_file)
 
 # Set up scheduler
 scheduler = BackgroundScheduler()

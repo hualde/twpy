@@ -23,21 +23,6 @@
         h1, h2 {
             color: #333;
         }
-        form {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        input[type="text"],
-        input[type="file"] {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
         button {
             background-color: #1da1f2;
             color: #fff;
@@ -63,27 +48,29 @@
             padding: 10px;
             border-radius: 4px;
         }
+        .pending-item img {
+            max-width: 100%;
+            height: auto;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Twitter Bot Dashboard</h1>
-        <form id="tweetForm">
-            <label for="status">Tweet Text:</label>
-            <input type="text" id="status" name="status" required>
-            
-            <label for="image">Image:</label>
-            <input type="file" id="image" name="image" accept="image/*">
-            
-            <button type="submit">Send Tweet</button>
-        </form>
+        <button id="tweetButton">Send Tweet</button>
         <div id="result"></div>
 
         <h2>Pending Item</h2>
         {% if pending_item %}
             <div class="pending-item">
-                <p><strong>Column A:</strong> {{ pending_item.column_a }}</p>
-                <p><strong>Column B:</strong> {{ pending_item.column_b }}</p>
+                <p><strong>Image File Name:</strong> {{ pending_item.column_a }}</p>
+                <p><strong>Tweet Text:</strong> {{ pending_item.column_b }}</p>
+                {% if image_data %}
+                    <img src="data:image/jpeg;base64,{{ image_data }}" alt="Tweet Image">
+                {% else %}
+                    <p>Image not available</p>
+                {% endif %}
             </div>
         {% else %}
             <p>No pending items found.</p>
@@ -91,18 +78,15 @@
     </div>
 
     <script>
-        document.getElementById('tweetForm').addEventListener('submit', function(e) {
+        document.getElementById('tweetButton').addEventListener('click', function(e) {
             e.preventDefault();
             
-            var formData = new FormData(this);
-
             fetch('/tweet', {
-                method: 'POST',
-                body: formData
+                method: 'POST'
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                    return response.json().then(err => { throw err; });
                 }
                 return response.json();
             })
@@ -111,7 +95,7 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                document.getElementById('result').textContent = 'An error occurred while sending the tweet.';
+                document.getElementById('result').textContent = error.result || 'An error occurred while sending the tweet.';
             });
         });
     </script>
