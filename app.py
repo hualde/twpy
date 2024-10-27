@@ -35,15 +35,16 @@ creds = service_account.Credentials.from_service_account_info(
     service_account_info, scopes=SCOPES)
 
 # The ID of the spreadsheet and Google Drive folder
-SAMPLE_SPREADSHEET_ID = '1K7r5ieDBpvBeqs-qa6hG_pTCiqUDbwIW6e9rU8zwa30'
+TWITTER_SPREADSHEET_ID = '1K7r5ieDBpvBeqs-qa6hG_pTCiqUDbwIW6e9rU8zwa30'
+INSTAGRAM_SPREADSHEET_ID = '1d6R3ULpWGecSMYxdbKmoSqOzRf_DJ63U3_NZPm4jTnM'
 SAMPLE_RANGE_NAME = 'X!A2:C'
 DRIVE_FOLDER_ID = '1eBTlJykWWl8oQ8mM5mw0IzKIyjtBJm8H'
 
-def get_first_pending_item():
+def get_first_pending_item(spreadsheet_id):
     try:
         service = build('sheets', 'v4', credentials=creds)
         sheet = service.spreadsheets()
-        result = sheet.values().get(spreadsheetId=SAMPLE_SPREADSHEET_ID,
+        result = sheet.values().get(spreadsheetId=spreadsheet_id,
                                     range=SAMPLE_RANGE_NAME).execute()
         values = result.get('values', [])
 
@@ -64,7 +65,7 @@ def get_first_pending_item():
         print(f"An error occurred: {e}")
         return None
 
-def update_sheet_status(row_index):
+def update_sheet_status(spreadsheet_id, row_index):
     try:
         service = build('sheets', 'v4', credentials=creds)
         sheet = service.spreadsheets()
@@ -73,7 +74,7 @@ def update_sheet_status(row_index):
             'values': [['enviado']]
         }
         result = sheet.values().update(
-            spreadsheetId=SAMPLE_SPREADSHEET_ID, range=range_name,
+            spreadsheetId=spreadsheet_id, range=range_name,
             valueInputOption='RAW', body=body).execute()
         print(f"{result.get('updatedCells')} cells updated.")
         return True
@@ -148,7 +149,7 @@ def tweet_with_image(status_text, image_file):
 
 @app.route('/')
 def home():
-    pending_item = get_first_pending_item()
+    pending_item = get_first_pending_item(TWITTER_SPREADSHEET_ID)
     image_data = {}
     if pending_item:
         image_file = get_image_from_drive(pending_item['column_a'])
@@ -161,7 +162,7 @@ def home():
 
 @app.route('/tweet', methods=['POST'])
 def tweet():
-    pending_item = get_first_pending_item()
+    pending_item = get_first_pending_item(TWITTER_SPREADSHEET_ID)
     if not pending_item:
         return jsonify({'result': 'No pending items to tweet'}), 400
 
@@ -181,25 +182,34 @@ def tweet():
     result = tweet_with_image(status_text, buffered)
 
     if "éxito" in result:
-        if update_sheet_status(pending_item['row_index']):
+        if update_sheet_status(TWITTER_SPREADSHEET_ID, pending_item['row_index']):
             result += " La hoja de cálculo ha sido actualizada."
         else:
             result += " Pero hubo un error al actualizar la hoja de cálculo."
 
     return jsonify({'result': result})
-    
+
 @app.route('/instagram')
 def instagram():
-    return render_template('instagram.html')
+    pending_item = get_first_pending_item(INSTAGRAM_SPREADSHEET_ID)
+    image_data = {}
+    if pending_item:
+        image_file = get_image_from_drive(pending_item['column_a'])
+        if image_file:
+            effects = apply_effects(image_file)
+            for effect, img in effects.items():
+                image_data[effect] = image_to_base64(img)
+
+    return render_template('instagram.html', pending_item=pending_item, image_data=image_data)
 
 def scheduled_tweet():
-    pending_item = get_first_pending_item()
+    pending_item = get_first_pending_item(TWITTER_SPREADSHEET_ID)
     if pending_item:
         image_file = get_image_from_drive(pending_item['column_a'])
         if image_file:
             result = tweet_with_image(pending_item['column_b'], image_file)
             if "éxito" in result:
-                update_sheet_status(pending_item['row_index'])
+                update_sheet_status(TWITTER_SPREADSHEET_ID, pending_item['row_index'])
 
 # Set up scheduler
 scheduler = BackgroundScheduler()

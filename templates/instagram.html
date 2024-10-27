@@ -29,6 +29,29 @@
             text-decoration: none;
             margin-right: 15px;
         }
+        h1, h2 {
+            color: #333;
+        }
+        .pending-item {
+            margin-top: 20px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .image-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .image-option {
+            text-align: center;
+        }
+        .image-option img {
+            max-width: 100%;
+            height: auto;
+        }
     </style>
 </head>
 <body>
@@ -38,7 +61,22 @@
     </nav>
     <div class="container">
         <h1>Instagram Page</h1>
-        <p>Esta página está en blanco por ahora.</p>
+        {% if pending_item %}
+            <div class="pending-item">
+                <h2>Pending Instagram Post</h2>
+                <p><strong>Post Text:</strong> {{ pending_item.column_b }}</p>
+                <div class="image-options">
+                    {% for effect, img_data in image_data.items() %}
+                        <div class="image-option">
+                            <img src="data:image/jpeg;base64,{{ img_data }}" alt="{{ effect }} effect">
+                            <p>{{ effect|capitalize }}</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% else %}
+            <p>No pending items found for Instagram.</p>
+        {% endif %}
     </div>
 </body>
 </html>
