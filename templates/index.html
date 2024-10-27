@@ -70,30 +70,45 @@
             border-color: #1da1f2;
             background-color: #e8f5fe;
         }
+        nav {
+            background-color: #333;
+            padding: 10px;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin-right: 15px;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Twitter Bot Dashboard</h1>
-        <div id="result"></div>
+    <nav>
+        <a href="/" style="color: white; text-decoration: none; margin-right: 15px;">Twitter</a>
+        <a href="/instagram" style="color: white; text-decoration: none;">Instagram</a>
+    </nav>
+    <div id="twitter-content">
+        <div class="container">
+            <h1>Twitter Bot Dashboard</h1>
+            <div id="result"></div>
 
-        {% if pending_item %}
-            <div class="pending-item">
-                <h2>Pending Tweet</h2>
-                <p><strong>Tweet Text:</strong> {{ pending_item.column_b }}</p>
-                <div class="image-options">
-                    {% for effect, img_data in image_data.items() %}
-                        <div class="image-option" data-effect="{{ effect }}">
-                            <img src="data:image/jpeg;base64,{{ img_data }}" alt="{{ effect }} effect">
-                            <p>{{ effect|capitalize }}</p>
-                        </div>
-                    {% endfor %}
+            {% if pending_item %}
+                <div class="pending-item">
+                    <h2>Pending Tweet</h2>
+                    <p><strong>Tweet Text:</strong> {{ pending_item.column_b }}</p>
+                    <div class="image-options">
+                        {% for effect, img_data in image_data.items() %}
+                            <div class="image-option" data-effect="{{ effect }}">
+                                <img src="data:image/jpeg;base64,{{ img_data }}" alt="{{ effect }} effect">
+                                <p>{{ effect|capitalize }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <button id="pendingTweetButton">Send Pending Tweet</button>
                 </div>
-                <button id="pendingTweetButton">Send Pending Tweet</button>
-            </div>
-        {% else %}
-            <p>No pending items found.</p>
-        {% endif %}
+            {% else %}
+                <p>No pending items found.</p>
+            {% endif %}
+        </div>
     </div>
 
     <script>

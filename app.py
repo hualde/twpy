@@ -187,6 +187,10 @@ def tweet():
             result += " Pero hubo un error al actualizar la hoja de cálculo."
 
     return jsonify({'result': result})
+    
+@app.route('/instagram')
+def instagram():
+    return render_template('instagram.html')
 
 def scheduled_tweet():
     pending_item = get_first_pending_item()
