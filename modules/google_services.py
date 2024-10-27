@@ -1,6 +1,7 @@
 import io
 import json
 import os
+import logging
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
@@ -9,7 +10,24 @@ class GoogleServices:
     def __init__(self):
         self.SCOPES = ['https://www.googleapis.com/auth/spreadsheets',
                        'https://www.googleapis.com/auth/drive.readonly']
-        self.service_account_info = json.loads(os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'))
+        
+        # Check if we're running on Heroku
+        if 'DYNO' in os.environ:
+            # If on Heroku, the credentials should be in an environment variable
+            credentials_json = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+            if credentials_json:
+                self.service_account_info = json.loads(credentials_json)
+            else:
+                raise EnvironmentError("GOOGLE_APPLICATION_CREDENTIALS environment variable is not set!")
+        else:
+            # If not on Heroku, assume the credentials are in a file
+            credentials_path = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+            if credentials_path and os.path.exists(credentials_path):
+                with open(credentials_path, 'r') as f:
+                    self.service_account_info = json.load(f)
+            else:
+                raise EnvironmentError("GOOGLE_APPLICATION_CREDENTIALS file not found!")
+
         self.creds = service_account.Credentials.from_service_account_info(
             self.service_account_info, scopes=self.SCOPES)
         self.sheets_service = build('sheets', 'v4', credentials=self.creds)
