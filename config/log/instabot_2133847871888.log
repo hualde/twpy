@@ -1,0 +1,16 @@
+2024-10-28 10:56:22,259 - instabot version: 0.117.0 (bot) - INFO - Instabot version: 0.117.0 Started
+2024-10-28 10:56:22,260 - instabot version: 0.117.0 (bot) - DEBUG - Bot imported from C:\Users\jhualde\Desktop\workspace\twpy\venv\Lib\site-packages\instabot\bot\bot.py
+2024-10-28 10:56:22,262 - instabot version: 0.117.0 (api_login) - INFO - Not yet logged in starting: PRE-LOGIN FLOW!
+2024-10-28 10:56:22,542 - instabot version: 0.117.0 (api) - DEBUG - POST to endpoint: accounts/get_prefill_candidates/ returned response: <Response [200]>
+2024-10-28 10:56:22,863 - instabot version: 0.117.0 (api) - DEBUG - POST to endpoint: qe/sync/ returned response: <Response [200]>
+2024-10-28 10:56:23,020 - instabot version: 0.117.0 (api) - DEBUG - POST to endpoint: launcher/sync/ returned response: <Response [200]>
+2024-10-28 10:56:23,243 - instabot version: 0.117.0 (api) - DEBUG - POST to endpoint: accounts/contact_point_prefill/ returned response: <Response [200]>
+2024-10-28 10:56:24,554 - instabot version: 0.117.0 (api) - DEBUG - POST to endpoint: accounts/login/ returned response: <Response [400]>
+2024-10-28 10:56:24,554 - instabot version: 0.117.0 (api) - DEBUG - Responsecode indicates error; response content: b'{"message":"You\'ll need to update Instagram to the latest version before you can use the app.","status":"fail","error_type":"block_eu_user_login_in_old_app"}'
+2024-10-28 10:56:24,554 - instabot version: 0.117.0 (api) - ERROR - Request returns 400 error!
+2024-10-28 10:56:24,554 - instabot version: 0.117.0 (api) - INFO - Instagram's error message: You'll need to update Instagram to the latest version before you can use the app.
+2024-10-28 10:56:24,568 - instabot version: 0.117.0 (api) - INFO - Error type: block_eu_user_login_in_old_app
+2024-10-28 10:56:24,571 - instabot version: 0.117.0 (api) - ERROR - Failed to login go to instagram and change your password
+2024-10-28 10:56:24,573 - instabot version: 0.117.0 (api) - INFO - Username or password is incorrect.
+2024-10-28 10:56:32,126 - instabot version: 0.117.0 (api_photo) - ERROR - Photo Upload failed with the following response: <Response [403]>
+2024-10-28 10:56:32,142 - instabot version: 0.117.0 (bot_photo) - INFO - Photo 'C:\Users\jhualde\AppData\Local\Temp\tmpdd25tlaj.jpg' is not uploaded.

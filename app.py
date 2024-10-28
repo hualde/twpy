@@ -129,33 +129,37 @@ def instagram_post():
         logging.error("INSTAGRAM_SPREADSHEET_ID is not set")
         return jsonify({'result': 'Instagram Spreadsheet ID is not configured'}), 500
 
-    pending_item = google_services.get_first_pending_item(INSTAGRAM_SPREADSHEET_ID)
-    if not pending_item:
-        logging.warning("No pending items to post on Instagram")
-        return jsonify({'result': 'No pending items to post on Instagram'}), 400
+    try:
+        pending_item = google_services.get_first_pending_item(INSTAGRAM_SPREADSHEET_ID)
+        if not pending_item:
+            logging.warning("No pending items to post on Instagram")
+            return jsonify({'result': 'No pending items to post on Instagram'}), 400
 
-    image_file = google_services.get_image_from_drive(pending_item['column_a'], INSTAGRAM_DRIVE_FOLDER_ID)
-    if not image_file:
-        logging.warning(f"Image not found: {pending_item['column_a']}")
-        return jsonify({'result': f"Image not found: {pending_item['column_a']}"}), 400
+        image_file = google_services.get_image_from_drive(pending_item['column_a'], INSTAGRAM_DRIVE_FOLDER_ID)
+        if not image_file:
+            logging.warning(f"Image not found: {pending_item['column_a']}")
+            return jsonify({'result': f"Image not found: {pending_item['column_a']}"}), 400
 
-    effect = request.form.get('effect', 'original')
-    effects = image_processor.apply_effects(image_file)
-    selected_image = effects[effect]
+        effect = request.form.get('effect', 'original')
+        effects = image_processor.apply_effects(image_file)
+        selected_image = effects[effect]
 
-    caption_text = pending_item['column_b']
-    result = instagram_handler.post_image(caption_text, selected_image)
+        caption_text = pending_item['column_b']
+        result = instagram_handler.post_image(caption_text, selected_image)
 
-    if "éxito" in result:
-        if google_services.update_sheet_status(INSTAGRAM_SPREADSHEET_ID, pending_item['row_index']):
-            result += " La hoja de cálculo ha sido actualizada."
-        else:
-            result += " Pero hubo un error al actualizar la hoja de cálculo."
-
-    logging.info(f"Instagram post result: {result}")
-    return jsonify({'result': result})
-
-
+        if "éxito" in result:
+            if google_services.update_sheet_status(INSTAGRAM_SPREADSHEET_ID, pending_item['row_index']):
+                result += " La hoja de cálculo ha sido actualizada."
+            else:
+                result += " Pero hubo un error al actualizar la hoja de cálculo."
+        
+        logging.info(f"Instagram post result: {result}")
+        return jsonify({'result': result})
+    except Exception as e:
+        logging.error(f"Error in instagram_post route: {str(e)}")
+        return jsonify({'result': f"Error inesperado: {str(e)}"}), 500
+    
+    
 @app.route('/discard_tweet', methods=['POST'])
 def discard_tweet():
     logging.info("Accessing discard_tweet route")
