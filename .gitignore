@@ -3,3 +3,4 @@
 .env
 service_account.json
 google-credentials.json
+/modules/__pycache__
