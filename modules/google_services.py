@@ -58,11 +58,11 @@ class GoogleServices:
             print(f"An error occurred: {e}")
             return None
 
-    def update_sheet_status(self, spreadsheet_id, row_index):
+    def update_sheet_status(self, spreadsheet_id, row_index, status='enviado'):
         try:
             range_name = f'X!C{row_index}'
             body = {
-                'values': [['enviado']]
+                'values': [[status]]
             }
             result = self.sheets_service.spreadsheets().values().update(
                 spreadsheetId=spreadsheet_id, range=range_name,
@@ -73,9 +73,9 @@ class GoogleServices:
             print(f"An error occurred while updating the sheet: {e}")
             return False
 
-    def get_image_from_drive(self, file_name):
+    def get_image_from_drive(self, file_name, folder_id):
         try:
-            query = f"name = '{file_name}' and '{os.environ.get('DRIVE_FOLDER_ID')}' in parents"
+            query = f"name = '{file_name}' and '{folder_id}' in parents"
             results = self.drive_service.files().list(q=query, fields="files(id, name)").execute()
             items = results.get('files', [])
 
